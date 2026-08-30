@@ -18,7 +18,8 @@ except ImportError:
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-ADMIN_USER_ID = os.getenv('ADMIN_USER_ID') # Opcional: restringir OTA al dueño
+ADMIN_USER_ID = os.getenv('ADMIN_USER_ID') # ID del dueño (opcional, para proteger la terminal)
+TERMINAL_CHANNEL = os.getenv('TERMINAL_CHANNEL', 'consola-kai') # Nombre o ID del canal de terminal
 BOT_NAME = os.getenv('BOT_NAME', 'Carlos')
 
 # Configurar intents para leer mensajes y escuchar miembros
@@ -179,6 +180,52 @@ async def on_message(message: discord.Message):
         res = await system_manager.apply_ota_update()
         await message.channel.send(res)
         return
+
+    # 3. Consola Remota de Linux (Terminal en Discord)
+    # Se activa si el canal se llama 'consola-kai' (o el configurado en TERMINAL_CHANNEL), o si empieza con $sh / $bash / $cmd
+    is_terminal_channel = (
+        (hasattr(message.channel, 'name') and message.channel.name == TERMINAL_CHANNEL)
+        or (str(message.channel.id) == str(TERMINAL_CHANNEL))
+    )
+    is_cmd_prefix = message.content.startswith("$sh ") or message.content.startswith("$bash ") or message.content.startswith("$ ")
+
+    if is_terminal_channel or is_cmd_prefix:
+        # Si está configurado ADMIN_USER_ID, proteger para que solo tú puedas ejecutar comandos
+        if ADMIN_USER_ID and str(message.author.id) != str(ADMIN_USER_ID):
+            await message.reply("🔒 No tienes permisos de administrador para usar la consola.")
+            return
+
+        cmd = message.content
+        for prefix in ["$sh ", "$bash ", "$ "]:
+            if cmd.startswith(prefix):
+                cmd = cmd[len(prefix):]
+                break
+
+        cmd = cmd.strip()
+        if cmd:
+            async with message.channel.typing():
+                try:
+                    proc = await asyncio.create_subprocess_shell(
+                        cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=25.0)
+                    output = (stdout.decode('utf-8', errors='replace') + stderr.decode('utf-8', errors='replace')).strip()
+                    
+                    if not output:
+                        output = "[Comando ejecutado sin salida (código 0)]"
+                    
+                    # Discord tiene un límite de 2000 caracteres por mensaje
+                    if len(output) > 1900:
+                        output = output[:1850] + "\n... [Salida truncada por límite de Discord]"
+
+                    await message.reply(f"```bash\n{output}\n```")
+                except asyncio.TimeoutError:
+                    await message.reply("⏱️ El comando tardó más de 25 segundos y se detuvo por seguridad.")
+                except Exception as e:
+                    await message.reply(f"❌ Error al ejecutar comando: `{e}`")
+            return
 
     # Si le están hablando directamente
     if is_mentioned or is_reply_to_bot or name_mentioned or isinstance(message.channel, discord.DMChannel):
