@@ -2,23 +2,19 @@
 set -e
 
 echo "==================================================="
-echo "  Configurando Discord Human Bot en Termux (Android)"
+echo "  Instalando binarios precompilados para Termux"
 echo "==================================================="
 
-# 1. Actualizar repositorios e instalar paquetes base del sistema
+# 1. Instalar paquetes de sistema y binarios ya compilados (evita compilar Rust/C)
 pkg update -y
-pkg install -y python ffmpeg libffi openssl clang make pkg-config libsodium git
+pkg install -y python python-cryptography python-numpy libsodium ffmpeg git
 
-# 2. Actualizar pip y wheel
-pip install --upgrade pip setuptools wheel
+# 2. Instalar PyNaCl usando la libreria de C del sistema sin aislar entorno
+SODIUM_INSTALL=system pip install --no-build-isolation pynacl
 
-# 3. Instalar PyNaCl y librerias nativas compatibles con Android ARM64
-SODIUM_INSTALL=system pip install pynacl
-
-# 4. Instalar dependencias del bot
-pip install -r requirements-termux.txt
+# 3. Instalar librerias puras de Python
+pip install aiosqlite python-dotenv edge-tts "discord.py[voice]" google-genai openai
 
 echo "==================================================="
-echo "  Instalación completada con éxito en Termux!"
-echo "  Ejecuta './start-termux.sh' para iniciar el bot."
+echo "  Instalacion completada sin compilar Rust/Maturin!"
 echo "==================================================="
