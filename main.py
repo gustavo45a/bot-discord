@@ -52,6 +52,25 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
+    # Soporte STT para notas de voz o audios subidos en Discord
+    audio_transcription = ""
+    if message.attachments:
+        for att in message.attachments:
+            if att.content_type and any(t in att.content_type for t in ["audio", "ogg", "mp3", "wav", "m4a"]):
+                print(f"[STT] Audio/Nota de voz recibida de {message.author.display_name}")
+                try:
+                    import tempfile
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".ogg") as tmp_audio:
+                        await att.save(tmp_audio.name)
+                        audio_transcription = voice.speech_to_text(tmp_audio.name)
+                        if os.path.exists(tmp_audio.name):
+                            os.remove(tmp_audio.name)
+                    if audio_transcription:
+                        print(f"[STT RESULTADO] '{audio_transcription}'")
+                        message.content = f"(audio de voz diciendo: {audio_transcription}) {message.content}".strip()
+                except Exception as e:
+                    print(f"[STT ERROR] {e}")
+
     # 1. Aprender jerga y guardar en memoria
     if message.guild:
         await memory.record_user_message(
@@ -161,13 +180,14 @@ async def on_message(message: discord.Message):
         slang = await memory.get_learned_slang()
         history = await memory.get_recent_chat_history(guild_id=guild_id, limit=8)
 
-        # Generar respuesta con la IA
+        # Generar respuesta con la IA (incluyendo sistema emocional y crush)
         clean_content = message.clean_content.replace(f"@{bot.user.name}", "").strip()
         response_text = await brain.generate_human_response(
             prompt=clean_content,
             author_name=message.author.display_name,
             history=history,
-            learned_slang=slang
+            learned_slang=slang,
+            author_id=str(message.author.id)
         )
 
         # Si el bot está en llamada de voz, reproducir la respuesta INMEDIATAMENTE en la llamada
