@@ -9,6 +9,7 @@ import memory
 import brain
 import voice
 import system_manager
+import mc_manager
 
 try:
     from discord.ext import voice_recv
@@ -235,6 +236,47 @@ async def on_message(message: discord.Message):
                 except Exception as e:
                     await message.reply(f"❌ Error al ejecutar comando: `{e}`")
             return
+
+    # 4. Módulo de Videojuegos - MINECRAFT (LAN, Mundos Locales y Servidores Oficiales de Microsoft)
+    mc_join_triggers = ["entra a minecraft", "metete a minecraft", "caile a minecraft", "juega minecraft", "conéctate a minecraft", "conectate a minecraft"]
+    mc_leave_triggers = ["salte de minecraft", "vete de minecraft", "cierra minecraft", "desconéctate de minecraft", "desconectate de minecraft"]
+
+    if (is_mentioned or name_mentioned) and any(t in content_lower for t in mc_leave_triggers):
+        res = mc_manager.stop_minecraft_bot()
+        await message.reply(res)
+        return
+
+    if (is_mentioned or name_mentioned) and any(t in content_lower for t in mc_join_triggers):
+        # Extraer IP y puerto si el usuario los escribió en el mensaje
+        # Formatos aceptados: 'entra a minecraft en 192.168.1.100', 'entra a minecraft en aternos.me:12345'
+        words = content_lower.split()
+        target_host = "127.0.0.1"
+        target_port = 25565
+        auth_mode = "offline" # Por defecto offline (para mundos locales / LAN / Aternos)
+
+        if "microsoft" in content_lower or "premium" in content_lower:
+            auth_mode = "microsoft"
+
+        for w in words:
+            if "." in w and not w.startswith("<") and not w.startswith("@"):
+                if ":" in w:
+                    parts = w.split(":")
+                    target_host = parts[0]
+                    try:
+                        target_port = int(parts[1])
+                    except ValueError:
+                        pass
+                else:
+                    target_host = w
+
+        resp_msg = await mc_manager.start_minecraft_bot(
+            host=target_host,
+            port=target_port,
+            username="Kai",
+            auth=auth_mode
+        )
+        await message.reply(resp_msg)
+        return
 
     # Si le están hablando directamente
     if is_mentioned or is_reply_to_bot or name_mentioned or isinstance(message.channel, discord.DMChannel):
