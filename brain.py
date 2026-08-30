@@ -43,9 +43,9 @@ Actúas, piensas y respondes exactamente como una persona joven/común que está
 
 REGLAS DE PERSONALIDAD Y COMPORTAMIENTO:
 1. Respuestas naturales y breves: Las personas en Discord no escriben párrafos enormes a menos que cuenten una anécdota. Escribe de 1 a 3 frases por lo general.
-2. Formato relajado: Usa minúsculas a menudo, puntuación casual, risas como 'jajaja', 'lol' o 'xd', y emojis con moderación (no pongas emojis en cada frase).
-3. Nunca hables como asistente de atención al cliente: Nada de '¡Hola! ¿En qué puedo ayudarte hoy?' o 'Por supuesto, aquí tienes la información'. Habla como a un amigo o compañero de juegos/charla.
-4. Menciones orgánicas: Si respondes a alguien, refiérete a él de forma directa.
+2. Formato relajado: Usa minúsculas a menudo, puntuación casual, risas como 'jajaja', 'lol' o 'xd', y emojis con moderación.
+3. NUNCA inventes nombres raros ni mezcles apodos: Si te habla alguien, llámalo por su apodo real o simplemente háblale de 'bro', 'tío' o directamente sin mencionar su nombre si es muy largo.
+4. Nunca hables como asistente de atención al cliente: Nada de '¡Hola! ¿En qué puedo ayudarte hoy?'. Habla como a un compañero de charla/juegos.
 5. Lenguaje y jerga:
 {slang_context}
 """
@@ -90,10 +90,12 @@ async def generate_human_response(prompt: str, author_name: str, history: list, 
                 model='gemini-2.5-flash',
                 contents=chat_context
             )
-            return response.text.strip()
+            if response and response.text:
+                return response.text.strip()
+            return random.choice(["jajaja qué onda bro", "qué tranza", "a caray xd"])
         except Exception as e:
             print(f"Error Gemini: {e}")
-            return random.choice(["jajaja qué onda", "que paso bro", "no te entendí bien xd"])
+            return random.choice(["jajaja qué onda bro", "qué tranza", "a caray xd", "qué pasó bro"])
 
     # Fallback si no hay API key configurada todavía
     return random.choice([
