@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Voz por defecto: es-MX-JorgeNeural (muy humana y casual)
+# Voz garantizada en español latino (México/América Latina)
 DEFAULT_VOICE = os.getenv('TTS_VOICE', 'es-MX-JorgeNeural')
 
 # Cargar Faster-Whisper solo cuando se requiera para no saturar memoria
@@ -23,15 +23,35 @@ def get_whisper_model():
             whisper_model = False
     return whisper_model
 
-async def text_to_speech(text: str, voice: str = DEFAULT_VOICE) -> str:
-    """Convierte texto a un archivo temporal de audio MP3 usando Edge-TTS."""
-    # Limpiar un poco el texto para TTS (quitar enlaces o caracteres raros)
-    clean_text = text.replace('xd', 'equis de').replace('lol', 'lol')
+import re
+
+def clean_text_for_speech(text: str) -> str:
+    """Limpia markdown, enlaces y caracteres que puedan hacer que el sintetizador cambie de idioma."""
+    # Quitar emojis raros y caracteres especiales que confunden al sintetizador
+    clean = re.sub(r'[\U00010000-\U0010ffff]', '', text)
+    # Quitar menciones de discord y formato markdown (*, _, `, ~)
+    clean = re.sub(r'<@&?[0-9]+>', '', clean)
+    clean = re.sub(r'[*_`~#>]', '', clean)
+    clean = re.sub(r'https?://\S+', '', clean)
+    # Reemplazar abreviaciones de internet comunes
+    clean = clean.replace('xd', 'equis de').replace('XD', 'equis de').replace('lol', 'jajaja').replace('alv', 'a la verga').replace('bro', 'hermano')
+    return clean.strip()
+
+async def text_to_speech(text: str, voice: str = None) -> str:
+    """Convierte texto a un archivo temporal de audio MP3 usando Edge-TTS forzado en español."""
+    # Asegurar que siempre use una voz en español
+    target_voice = voice or os.getenv('TTS_VOICE') or 'es-MX-JorgeNeural'
+    if not target_voice.startswith('es-'):
+        target_voice = 'es-MX-JorgeNeural'
+
+    clean_text = clean_text_for_speech(text)
+    if not clean_text:
+        clean_text = "qué onda"
     
     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tmp_file:
         output_path = tmp_file.name
 
-    communicate = edge_tts.Communicate(clean_text, voice)
+    communicate = edge_tts.Communicate(clean_text, target_voice)
     await communicate.save(output_path)
     return output_path
 
