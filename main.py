@@ -8,10 +8,12 @@ from dotenv import load_dotenv
 import memory
 import brain
 import voice
+import system_manager
 
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+ADMIN_USER_ID = os.getenv('ADMIN_USER_ID') # Opcional: restringir OTA al dueño
 BOT_NAME = os.getenv('BOT_NAME', 'Carlos')
 
 # Configurar intents para leer mensajes y escuchar miembros
@@ -123,6 +125,35 @@ async def on_message(message: discord.Message):
             await message.guild.voice_client.disconnect()
             await message.reply("sale bro, al rato")
             return
+
+    # 1. Sistema de Rendimiento (CPU, RAM, Uptime)
+    perf_triggers = ["rendimiento", "estado del sistema", "como vas de ram", "que tal vas", "stats", "recursos"]
+    if (is_mentioned or name_mentioned) and any(t in content_lower for t in perf_triggers):
+        metrics = system_manager.get_system_metrics()
+        reply_msg = (
+            f"todo bien por acá ando activo desde hace **{metrics['uptime']}**\n"
+            f"Uso de RAM: **{metrics['ram_mb']} MB** | CPU: **{metrics['cpu_percent']}%**"
+        )
+        await message.reply(reply_msg)
+        return
+
+    # 2. Sistema de Actualización OTA (Over-The-Air vía GitHub)
+    ota_update_triggers = ["actualizate", "actualízate", "update ota", "baja la nueva version", "descarga cambios"]
+    ota_check_triggers = ["hay updates", "hay actualización", "hay actualizacion", "checa updates", "revisa updates"]
+
+    if (is_mentioned or name_mentioned) and any(t in content_lower for t in ota_check_triggers):
+        info = await system_manager.check_for_updates()
+        if info.get("has_update"):
+            await message.reply(f"sí bro, hay **{info['commits_behind']}** cambios nuevos en GitHub. Dime `Kai actualízate` si quieres que los aplique.")
+        else:
+            await message.reply("todo al tiro, ya tengo la última versión de GitHub instalada.")
+        return
+
+    if (is_mentioned or name_mentioned) and any(t in content_lower for t in ota_update_triggers):
+        await message.reply("va, aplicando actualización OTA desde GitHub, dame un momento...")
+        res = await system_manager.apply_ota_update()
+        await message.channel.send(res)
+        return
 
     # Si le están hablando directamente
     if is_mentioned or is_reply_to_bot or name_mentioned or isinstance(message.channel, discord.DMChannel):
