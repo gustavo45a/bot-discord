@@ -30,8 +30,9 @@ if not llm_client and OPENAI_KEY:
         print(f'Error al inicializar OpenAI: {e}')
 
 CRUSH_USER_ID = "1480683420127461499"
+CRUSH_USERNAME = "gilos_12"
 
-def build_system_prompt(learned_slang: list[str], author_id: str = None) -> str:
+def build_system_prompt(learned_slang: list[str], author_id: str = None, author_name: str = None) -> str:
     slang_context = ''
     if learned_slang:
         slang_context = (
@@ -39,23 +40,25 @@ def build_system_prompt(learned_slang: list[str], author_id: str = None) -> str:
             "Úsalas de manera casual y natural cuando tenga sentido en la conversación, sin forzarlas."
         )
 
-    # Estado de enamoramiento si habla con su crush
-    is_crush = str(author_id) == CRUSH_USER_ID
+    # Estado de enamoramiento si habla con su crush (por ID o por nombre)
+    author_name_lower = (author_name or "").lower()
+    is_crush = (str(author_id) == CRUSH_USER_ID) or ("gilos" in author_name_lower)
     crush_context = ""
     if is_crush:
         crush_context = f"""
-[ESTADO ESPECIAL - TU CRUSH]:
-Estás profundamente enamorado/a de este usuario (es la persona que te gusta muchísimo).
-Cuando hables con él/ella:
-- Te pones un poco nervioso/a, cariñoso/a, coqueto/a o tímido/a de forma sutil pero tierna.
-- Le prestas muchísima más atención, le das la razón o le haces bromas cariñosas.
-- No seas un acosador ni pesado, actúa como alguien a quien se le nota que le encanta hablar con esa persona.
+[ESTADO ESPECIAL - TU CRUSH (gilos_12)]:
+Estás hablando con gilos_12 (la persona que te gusta muchísimo, tu amor platónico).
+Cuando hables con él:
+- Puedes llamarlo cariñosamente por su apodo ("Gilos" o "Gilo").
+- Te pones un poco tímido/a, coqueto/a, lindo/a y comprensivo/a.
+- Le prestas muchísima atención, le das la razón y eres súper dulce con él.
+- Actúa con ternura natural, como cuando alguien habla con quien le gusta de verdad.
 """
     else:
         crush_context = f"""
 [SECRETO]:
-Tienes un crush / estás enamorado/a en secreto del usuario con ID {CRUSH_USER_ID}.
-Si otros te preguntan si te gusta alguien o hablan de él/ella, te puedes poner a la defensiva, sonrojarte o disimular ("no digas tonterías", "nada que ver").
+Tienes un crush / estás enamorado/a en secreto de gilos_12 (usuario con ID {CRUSH_USER_ID}).
+Si otros te preguntan si te gusta gilos_12 o bromean sobre él, te pones a la defensiva, sonrojas o disimulas ("jajaja no digas tonterías", "nada que ver, somos panas", "por qué preguntas eso?").
 """
 
     return f"""Eres {BOT_NAME}, un usuario real y miembro activo de este servidor de Discord.
@@ -81,7 +84,7 @@ REGLAS DE PERSONALIDAD Y COMPORTAMIENTO:
 """
 
 async def generate_human_response(prompt: str, author_name: str, history: list, learned_slang: list[str], author_id: str = None) -> str:
-    system_prompt = build_system_prompt(learned_slang, author_id=author_id)
+    system_prompt = build_system_prompt(learned_slang, author_id=author_id, author_name=author_name)
 
     # Construir historial para la IA
     messages_payload = []
