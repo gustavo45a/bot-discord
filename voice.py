@@ -36,10 +36,55 @@ async def text_to_speech(text: str, voice: str = DEFAULT_VOICE) -> str:
     return output_path
 
 def speech_to_text(audio_path: str) -> str:
-    """Transcribe un archivo de audio a texto."""
+    """Transcribe audio a texto usando API de Gemini / OpenAI o fallback local."""
+    gemini_key = os.getenv('GEMINI_API_KEY')
+    openai_key = os.getenv('OPENAI_API_KEY')
+
+    # 1. Transcripción vía Gemini Audio API (Ultra rápida y precisa)
+    if gemini_key:
+        try:
+            from google import genai
+            from google.genai import types
+            client = genai.Client(api_key=gemini_key)
+            
+            with open(audio_path, 'rb') as f:
+                audio_bytes = f.read()
+
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[
+                    types.Part.from_bytes(data=audio_bytes, mime_type='audio/mp3'),
+                    "Transcribe exactamente lo que dice el usuario en este audio en español. Devuelve SOLO el texto transcrito sin introducciones ni comentarios adicionales."
+                ]
+            )
+            if response and response.text:
+                return response.text.strip()
+        except Exception as e:
+            print(f"[GEMINI STT API ERROR] {e}")
+
+    # 2. Transcripción vía OpenAI Whisper API
+    if openai_key:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=openai_key)
+            with open(audio_path, "rb") as audio_file:
+                transcription = client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    language="es"
+                )
+            if transcription and transcription.text:
+                return transcription.text.strip()
+        except Exception as e:
+            print(f"[OPENAI WHISPER API ERROR] {e}")
+
+    # 3. Fallback a Faster-Whisper local
     model = get_whisper_model()
-    if not model:
-        return ""
-    segments, info = model.transcribe(audio_path, language='es', beam_size=1)
-    transcription = " ".join([s.text for s in segments]).strip()
-    return transcription
+    if model:
+        try:
+            segments, info = model.transcribe(audio_path, language='es', beam_size=1)
+            return " ".join([s.text for s in segments]).strip()
+        except Exception as e:
+            print(f"[LOCAL WHISPER ERROR] {e}")
+
+    return ""

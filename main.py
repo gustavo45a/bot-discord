@@ -10,6 +10,11 @@ import brain
 import voice
 import system_manager
 
+try:
+    from discord.ext import voice_recv
+except ImportError:
+    voice_recv = None
+
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
@@ -119,13 +124,14 @@ async def on_message(message: discord.Message):
             target_channel = message.author.voice.channel
             print(f"[VOICE] Conectando instantáneamente a: {target_channel.name} ({target_channel.id})")
             
-            # Conexión instantánea sin esperar
+            # Conexión instantánea a voz con soporte de recepción (STT) si voice_recv está instalado
+            cls = voice_recv.VoiceRecvClient if voice_recv else discord.VoiceClient
             if message.guild.voice_client:
                 if message.guild.voice_client.channel != target_channel:
                     await message.guild.voice_client.move_to(target_channel)
                 vc = message.guild.voice_client
             else:
-                vc = await target_channel.connect()
+                vc = await target_channel.connect(cls=cls)
 
             # Avisar rápido por texto y saludar por voz sin demoras
             await message.channel.send("ya caí al canal")
