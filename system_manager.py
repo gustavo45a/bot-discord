@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import asyncio
 import subprocess
@@ -56,8 +56,9 @@ async def check_for_updates() -> dict:
         return {"has_update": False, "error": str(e)}
 
 async def apply_ota_update() -> str:
-    """Ejecuta git pull y reinicia el proceso del bot de forma transparente."""
+    """Ejecuta git pull, instala dependencias nuevas si las hay y reinicia a Kai."""
     try:
+        # 1. Bajar código de GitHub
         pull_proc = await asyncio.create_subprocess_exec(
             "git", "pull", "origin", "main",
             stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -68,9 +69,16 @@ async def apply_ota_update() -> str:
         if pull_proc.returncode != 0:
             return f"Error al actualizar: {stderr.decode().strip()}"
 
-        # Programar reinicio limpio del proceso
+        # 2. Instalar paquetes de Python que hayan cambiado automáticamente
+        pip_proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "pip", "install", "--break-system-packages", "-r", "requirements.txt",
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        await pip_proc.communicate()
+
+        # 3. Programar reinicio limpio del proceso
         asyncio.create_task(_delayed_restart())
-        return f"Actualización completada:\n`{output_msg}`\nReiniciando a Kai en 2 segundos..."
+        return f"Actualización OTA completada con éxito:\n```{output_msg}```\n¡Reiniciando a Kai en 2 segundos con todas las novedades!"
     except Exception as e:
         return f"Error en OTA: {e}"
 
