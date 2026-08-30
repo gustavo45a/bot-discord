@@ -205,13 +205,22 @@ async def on_message(message: discord.Message):
         if cmd:
             async with message.channel.typing():
                 try:
+                    # Forzar salida plana sin códigos ANSI/paginadores interactivos
+                    env = os.environ.copy()
+                    env["PAGER"] = "cat"
+                    env["TERM"] = "dumb"
+
                     proc = await asyncio.create_subprocess_shell(
                         cmd,
                         stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE
+                        stderr=asyncio.subprocess.PIPE,
+                        env=env
                     )
                     stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=25.0)
-                    output = (stdout.decode('utf-8', errors='replace') + stderr.decode('utf-8', errors='replace')).strip()
+                    raw_out = (stdout.decode('utf-8', errors='replace') + stderr.decode('utf-8', errors='replace')).strip()
+                    
+                    # Limpiar secuencias de escape ANSI tipo [?2004h, etc.
+                    output = re.sub(r'\x1b\[[0-9;?]*[a-zA-Z]|\x1b\([a-zA-Z]', '', raw_out).strip()
                     
                     if not output:
                         output = "[Comando ejecutado sin salida (código 0)]"
