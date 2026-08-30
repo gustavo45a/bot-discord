@@ -217,7 +217,7 @@ async def on_message(message: discord.Message):
                         stderr=asyncio.subprocess.PIPE,
                         env=env
                     )
-                    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=25.0)
+                    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=180.0)
                     raw_out = (stdout.decode('utf-8', errors='replace') + stderr.decode('utf-8', errors='replace')).strip()
                     
                     # Limpiar secuencias de escape ANSI tipo [?2004h, etc.
@@ -232,7 +232,7 @@ async def on_message(message: discord.Message):
 
                     await message.reply(f"```bash\n{output}\n```")
                 except asyncio.TimeoutError:
-                    await message.reply("⏱️ El comando tardó más de 25 segundos y se detuvo por seguridad.")
+                    await message.reply("⏱️ El comando tardó más de 3 minutos y se detuvo por seguridad.")
                 except Exception as e:
                     await message.reply(f"❌ Error al ejecutar comando: `{e}`")
             return
