@@ -56,11 +56,28 @@ async def text_to_speech(text: str, voice: str = None) -> str:
     return output_path
 
 def speech_to_text(audio_path: str) -> str:
-    """Transcribe audio a texto usando API de Gemini / OpenAI o fallback local."""
+    """Transcribe audio a texto usando API de Groq, Gemini / OpenAI o fallback local."""
+    groq_key = os.getenv('GROQ_API_KEY')
     gemini_key = os.getenv('GEMINI_API_KEY')
     openai_key = os.getenv('OPENAI_API_KEY')
 
-    # 1. Transcripción vía Gemini Audio API (Ultra rápida y precisa)
+    # 1. Transcripción vía Groq Whisper (Ultra rápida ~0.3s)
+    if groq_key:
+        try:
+            from groq import Groq
+            client = Groq(api_key=groq_key)
+            with open(audio_path, "rb") as f:
+                transcription = client.audio.transcriptions.create(
+                    model="whisper-large-v3",
+                    file=f,
+                    language="es"
+                )
+            if transcription and transcription.text:
+                return transcription.text.strip()
+        except Exception as e:
+            print(f"[GROQ STT ERROR] {e}")
+
+    # 2. Transcripción vía Gemini Audio API
     if gemini_key:
         try:
             from google import genai
