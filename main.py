@@ -24,9 +24,6 @@ ADMIN_USER_ID = os.getenv('ADMIN_USER_ID') # ID del dueño (opcional, para prote
 TERMINAL_CHANNEL = os.getenv('TERMINAL_CHANNEL', 'consola-kai') # Nombre o ID del canal de terminal
 BOT_NAME = os.getenv('BOT_NAME', 'Kai')
 
-CANAL_BIENVENIDAS_ID = int(os.getenv('CANAL_BIENVENIDAS_ID', '1503248831603675147'))
-CANAL_STAFF_ID = int(os.getenv('CANAL_STAFF_ID', '0'))
-
 # Configurar intents para leer mensajes y escuchar miembros
 intents = discord.Intents.default()
 intents.message_content = True
@@ -34,29 +31,15 @@ intents.guilds = True
 intents.members = True
 intents.voice_states = True
 
-bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
+bot = commands.Bot(command_prefix="", intents=intents, help_command=None)
 
 @bot.event
 async def on_ready():
     await memory.init_db()
     print(f"========================================")
     print(f"  [HUMAN BOT] Conectado como: {bot.user.name}")
-    print(f"  [ESTADO] Staff furry de 19 años listo")
+    print(f"  [ESTADO] Listo para actuar como usuario real")
     print(f"========================================")
-
-@bot.event
-async def on_member_join(member):
-    if member.bot: return
-    canal = bot.get_channel(CANAL_BIENVENIDAS_ID)
-    if not canal: return
-
-    async with canal.typing():
-        prompt = f"Actúa como staff furry de 19 años. Saluda brevemente en una línea a: {member.display_name}"
-        try:
-            res = await brain.generate_human_response(prompt=prompt, author_name=member.display_name, history=[], learned_slang=[])
-        except Exception:
-            res = f"wenaas {member.mention} bienvenido al server!"
-    await canal.send(res.replace(member.display_name, member.mention))
 
 async def simulate_human_typing(channel, text: str):
     """Simula el tiempo que tardaría una persona real en escribir un mensaje."""
